@@ -66,14 +66,14 @@ class _LoginViewState extends State<LoginView> {
     try {
       _response = await _signClient.connect(requiredNamespaces: {
         'eip155': const RequiredNamespace(
-            chains: [
-              'eip155:1'
-            ], // Ethereum chain
+            chains: [], // Ethereum chain
             methods: [
               'eth_signTransaction',
               'personal_sign'
             ], // Requestable Methods
-            events: []),
+            events: [],
+        ),
+
       });
 
       Uri? uri = _response.uri;
@@ -82,6 +82,13 @@ class _LoginViewState extends State<LoginView> {
       debugPrint("$exp");
     }
   } // Generates the uri from the signClient instance
+
+  getPos(str, subStr, i) {
+    print("String $str");
+    print("SubStr $subStr");
+    print("I $i");
+    return str.split(subStr).sublist(0,  2).join(subStr).length;
+  }
 
   _launchWithMetamask() async {
     try {
@@ -93,12 +100,14 @@ class _LoginViewState extends State<LoginView> {
       _signClient.onSessionConnect.subscribe((SessionConnect? session) async {
        await launchUrlString(_appUri, mode: LaunchMode.externalApplication);
 
-        _accountAddress = session?.session.namespaces['eip155']?.accounts[0].substring(9);
+       var chain = session?.session.namespaces['eip155']?.accounts[0].substring(0, getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2));
+       debugPrint("Chain $chain");
+        _accountAddress = session?.session.namespaces['eip155']?.accounts[0].substring(getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2) + 1);
         debugPrint("Account Address $_accountAddress");
 
         // launchUrlString(_appUri, mode: LaunchMode.externalApplication);
 
-        await _signRequest();
+        await _signRequest(chain);
       });
     } catch (exp) {
       debugPrint("$exp");
@@ -111,26 +120,28 @@ class _LoginViewState extends State<LoginView> {
       _toggleModalVisibility();
 
       _session = await _response.session.future;
-
+      debugPrint("Session $_session");
       _signClient.onSessionConnect.subscribe((SessionConnect? session) async {
         _toggleModalVisibility();
 
+        var chain = session?.session.namespaces['eip155']?.accounts[0].substring(0, getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2));
+        debugPrint("Chain $chain");
         _accountAddress =
-            session?.session.namespaces['eip155']?.accounts[0].substring(9);
+            session?.session.namespaces['eip155']?.accounts[0].substring(getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2) + 1);
         debugPrint("Account Address $_accountAddress");
 
-        await _signRequest();
+        await _signRequest(chain);
       });
     } catch (exp) {
       debugPrint("$exp");
     }
   } // Used to authenticate and sign with walletConnect
 
-  _signRequest() async {
+  _signRequest(chain) async {
     try {
       _signature = await _signClient.request(
         topic: _session.topic,
-        chainId: 'eip155:1',
+        chainId: chain,
         request: SessionRequestParams(method: 'personal_sign', params: [
           '5468697320697320666f7220766572696669636174696f6e',
           _accountAddress
@@ -160,101 +171,99 @@ class _LoginViewState extends State<LoginView> {
       );
     } else {
       return Scaffold(
-        body: GestureDetector(
-          onTap: _handleTap,
-          child: Stack(
-            children: [
-              Container(
-                height: MediaQuery.of(context).size.height,
-                width: MediaQuery.of(context).size.width,
-                decoration: BoxDecoration(
-                    image: DecorationImage(
-                  image: AssetImage(AppImages.newbg),
-                  fit: BoxFit.fill,
-                )),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 40),
-                        child: Image.asset(
-                          AppImages.logoname,
-                          width: 150,
-                        ),
+        body: Stack(
+          children: [
+            Container(
+              height: MediaQuery.of(context).size.height,
+              width: MediaQuery.of(context).size.width,
+              decoration: BoxDecoration(
+                  image: DecorationImage(
+                image: AssetImage(AppImages.newbg),
+                fit: BoxFit.fill,
+              )),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Image.asset(
+                        AppImages.logoname,
+                        width: 150,
                       ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Column(
-                          children: [
-                            GradientTextWidget(
-                              size: 25,
-                              text: 'Login',
-                            ),
-                            CustomSizedBoxHeight(height: 20.h),
-                            CustomText(
-                              textStyle: AppStyle.textStyle13Regular,
-                              title:
-                                  'This party’s just getting started! Sign in to\n join the fun. ',
-                              textAlign: TextAlign.center,
-                              maxline: 2,
-                            ),
-                            CustomSizedBoxHeight(height: 20),
-                            CustomButton(
-                                width: double.infinity,
-                                ontap: () => _launchWithMetamask(),
-                                image: AppImages.metamask,
-                                title: 'MetaMask',
-                                AppStyle: AppStyle.textStyle14whiteSemiBold,
-                                // color: AppColors.mainColor,
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    AppColors.mainColor.withOpacity(0.4),
-                                    AppColors.indigo.withOpacity(0.4),
-                                    AppColors.indigo.withOpacity(0.4),
-                                  ],
-                                )),
-                            CustomSizedBoxHeight(height: 20.h),
-                            CustomButton(
-                                width: double.infinity,
-                                ontap: () => _launchWithWalletConnect(),
-                                AppStyle: AppStyle.textStyle14whiteSemiBold,
-                                image: AppImages.walletconnectpng,
-                                title: 'WalletConnect',
-                                // color: AppColors.mainColor,
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    AppColors.mainColor.withOpacity(0.4),
-                                    AppColors.indigo.withOpacity(0.4),
-                                    AppColors.indigo.withOpacity(0.4),
-                                  ],
-                                )),
-                            CustomSizedBoxHeight(height: 20.h),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Column(
+                        children: [
+                          GradientTextWidget(
+                            size: 25,
+                            text: 'Login',
+                          ),
+                          CustomSizedBoxHeight(height: 20.h),
+                          CustomText(
+                            textStyle: AppStyle.textStyle13Regular,
+                            title:
+                                'This party’s just getting started! Sign in to\n join the fun. ',
+                            textAlign: TextAlign.center,
+                            maxline: 2,
+                          ),
+                          CustomSizedBoxHeight(height: 20),
+                          CustomButton(
+                              width: double.infinity,
+                              ontap: () => _launchWithMetamask(),
+                              image: AppImages.metamask,
+                              title: 'MetaMask',
+                              AppStyle: AppStyle.textStyle14whiteSemiBold,
+                              // color: AppColors.mainColor,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  AppColors.mainColor.withOpacity(0.4),
+                                  AppColors.indigo.withOpacity(0.4),
+                                  AppColors.indigo.withOpacity(0.4),
+                                ],
+                              )),
+                          CustomSizedBoxHeight(height: 20.h),
+                          CustomButton(
+                              width: double.infinity,
+                              ontap: () => _launchWithWalletConnect(),
+                              AppStyle: AppStyle.textStyle14whiteSemiBold,
+                              image: AppImages.walletconnectpng,
+                              title: 'WalletConnect',
+                              // color: AppColors.mainColor,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  AppColors.mainColor.withOpacity(0.4),
+                                  AppColors.indigo.withOpacity(0.4),
+                                  AppColors.indigo.withOpacity(0.4),
+                                ],
+                              )),
+                          CustomSizedBoxHeight(height: 20.h),
+                        ],
+                      ),
+                    )
+                  ],
                 ),
               ),
-              if (_isModalVisible)
-                BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                  child: Center(
-                    child: WalletConnectModal(
-                      uri: _appUri,
-                      launchWallet: _launchWithMetamask,
-                    ),
+            ),
+            if (_isModalVisible)
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Center(
+                  child: WalletConnectModal(
+                    uri: _appUri,
+                    launchWallet: _launchWithMetamask,
+                    closeBehavior: _handleTap,
                   ),
-                )
-            ],
-          ),
+                ),
+              )
+          ],
         ),
       );
     }
