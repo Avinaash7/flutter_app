@@ -67,6 +67,8 @@ dependencies:
   web3modal_flutter: ^1.2.1
   qr_flutter: ^4.1.0
   web3dart: ^2.6.1
+  flutter_custom_tabs: ^1.0.4
+  appcheck: ^1.0.3
 
 dev_dependencies:
   flutter_test:

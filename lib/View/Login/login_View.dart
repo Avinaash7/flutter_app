@@ -1,5 +1,6 @@
 import 'dart:ui';
-
+import 'dart:io';
+import 'package:appcheck/appcheck.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cratch/Utils/app_style.dart';
@@ -90,7 +91,7 @@ class _LoginViewState extends State<LoginView> {
     return str.split(subStr).sublist(0,  2).join(subStr).length;
   }
 
-  _launchWithMetamask() async {
+  _callmetamask() async {
     try {
       await _getUri();
       await launchUrlString(_appUri, mode: LaunchMode.externalApplication);
@@ -98,10 +99,10 @@ class _LoginViewState extends State<LoginView> {
       _session = await _response.session.future;
 
       _signClient.onSessionConnect.subscribe((SessionConnect? session) async {
-       await launchUrlString(_appUri, mode: LaunchMode.externalApplication);
+        await launchUrlString(_appUri, mode: LaunchMode.externalApplication);
 
-       var chain = session?.session.namespaces['eip155']?.accounts[0].substring(0, getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2));
-       debugPrint("Chain $chain");
+        var chain = session?.session.namespaces['eip155']?.accounts[0].substring(0, getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2));
+        debugPrint("Chain $chain");
         _accountAddress = session?.session.namespaces['eip155']?.accounts[0].substring(getPos(session?.session.namespaces['eip155']?.accounts[0], ':', 2) + 1);
         debugPrint("Account Address $_accountAddress");
 
@@ -109,6 +110,53 @@ class _LoginViewState extends State<LoginView> {
 
         await _signRequest(chain);
       });
+    } catch (exp) {
+      debugPrint("$exp");
+    }
+  }
+
+  _launchWithMetamask() async {
+    try {
+
+      if (Platform.isAndroid) {
+        String package = "io.metamask";
+
+       AppInfo? met =  await AppCheck.checkAvailability(package);
+
+       if(met != null){
+         _callmetamask();
+       }
+       else{
+
+         Future.delayed(Duration.zero, () {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(
+               content: Text('Metamask is not Installed !!'),
+             ),
+           );
+         });
+       }
+
+      } else if (Platform.isIOS) {
+        // iOS doesn't allow to get installed apps.
+
+        AppInfo? met = await AppCheck.checkAvailability("com.metamask.fox");
+
+        if(met != null){
+          _callmetamask();
+        }
+        else{
+          Future.delayed(Duration.zero, () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Metamask is not Installed !!'),
+              ),
+            );
+          });
+
+        }
+      }
+
     } catch (exp) {
       debugPrint("$exp");
     }
